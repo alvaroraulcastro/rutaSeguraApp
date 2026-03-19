@@ -1,10 +1,26 @@
-import React from 'react';
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import * as Location from 'expo-location';
 
 export default function DashboardScreen() {
   const router = useRouter();
+  const [location, setLocation] = useState<Location.LocationObject | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const requestLocation = async () => {
+    let { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') {
+      setErrorMsg('Permiso de ubicación denegado');
+      Alert.alert('Permiso Denegado', 'La aplicación necesita permisos de ubicación para funcionar correctamente.');
+      return;
+    }
+
+    let currentLocation = await Location.getCurrentPositionAsync({});
+    setLocation(currentLocation);
+    Alert.alert('Ubicación Obtenida', `Lat: ${currentLocation.coords.latitude}, Lon: ${currentLocation.coords.longitude}`);
+  };
 
   const handleLogout = () => {
     // Aquí iría la lógica de logout real
@@ -26,6 +42,18 @@ export default function DashboardScreen() {
         <View style={styles.statBox}>
           <Text style={styles.statValue}>124</Text>
           <Text style={styles.statLabel}>Pasajeros</Text>
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Estado de Ubicación</Text>
+        <View style={styles.currentRouteCard}>
+          <Text style={styles.routeDetails}>
+            {location ? `Ubicación: ${location.coords.latitude.toFixed(4)}, ${location.coords.longitude.toFixed(4)}` : errorMsg || 'No se ha obtenido la ubicación'}
+          </Text>
+          <TouchableOpacity style={styles.locationButton} onPress={requestLocation}>
+            <Text style={styles.startButtonText}>Actualizar Ubicación</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -130,6 +158,12 @@ const styles = StyleSheet.create({
   },
   startButton: {
     backgroundColor: '#007bff',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+  },
+  locationButton: {
+    backgroundColor: '#28a745',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
