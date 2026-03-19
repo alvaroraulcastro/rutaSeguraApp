@@ -1,72 +1,153 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as Location from 'expo-location';
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
+
+// Mock de viajes programados
+const MOCK_TRIPS = [
+  {
+    id: '1',
+    name: 'Ruta Escolar - Mañana',
+    time: '07:30 AM',
+    passengers: 12,
+    status: 'pending',
+    route: [
+      { latitude: -33.4489, longitude: -70.6693, title: 'Inicio: Colegio A' },
+      { latitude: -33.4510, longitude: -70.6650, title: 'Parada 1: Juanito' },
+      { latitude: -33.4550, longitude: -70.6600, title: 'Parada 2: Maria' },
+      { latitude: -33.4600, longitude: -70.6550, title: 'Fin: Residencial B' },
+    ]
+  },
+  {
+    id: '2',
+    name: 'Ruta Corporativa - Tarde',
+    time: '05:30 PM',
+    passengers: 8,
+    status: 'pending',
+    route: [
+      { latitude: -33.4150, longitude: -70.6050, title: 'Empresa X' },
+      { latitude: -33.4200, longitude: -70.6150, title: 'Metro Tobalaba' },
+    ]
+  }
+];
 
 export default function DashboardScreen() {
   const router = useRouter();
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [selectedTrip, setSelectedTrip] = useState<typeof MOCK_TRIPS[0] | null>(null);
+  const [isTripActive, setIsTripActive] = useState(false);
 
-  const requestLocation = async () => {
-    let { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== 'granted') {
-      setErrorMsg('Permiso de ubicación denegado');
-      Alert.alert('Permiso Denegado', 'La aplicación necesita permisos de ubicación para funcionar correctamente.');
+  useEffect(() => {
+    (async () => {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === 'granted') {
+        let currentLocation = await Location.getCurrentPositionAsync({});
+        setLocation(currentLocation);
+      }
+    })();
+  }, []);
+
+  const handleStartTrip = () => {
+    if (!selectedTrip) {
+      Alert.alert('Atención', 'Por favor selecciona un viaje primero.');
       return;
     }
+    setIsTripActive(true);
+  };
 
-    let currentLocation = await Location.getCurrentPositionAsync({});
-    setLocation(currentLocation);
-    Alert.alert('Ubicación Obtenida', `Lat: ${currentLocation.coords.latitude}, Lon: ${currentLocation.coords.longitude}`);
+  const handleFinishTrip = () => {
+    setIsTripActive(false);
+    setSelectedTrip(null);
+    Alert.alert('Viaje Finalizado', 'El viaje ha concluido con éxito.');
   };
 
   const handleLogout = () => {
-    // Aquí iría la lógica de logout real
     router.replace('/(auth)/login');
   };
+
+  if (isTripActive && selectedTrip) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.activeTripHeader}>
+          <Text style={styles.activeTripTitle}>{selectedTrip.name}</Text>
+          <Text style={styles.activeTripSub}>{selectedTrip.time} - {selectedTrip.passengers} Pasajeros</Text>
+        </View>
+        
+        <MapView
+          style={styles.map}
+          initialRegion={{
+            latitude: selectedTrip.route[0].latitude,
+            longitude: selectedTrip.route[0].longitude,
+            latitudeDelta: 0.02,
+            longitudeDelta: 0.02,
+          }}
+          showsUserLocation
+        >
+          {selectedTrip.route.map((point, index) => (
+            <Marker
+              key={index}
+              coordinate={{ latitude: point.latitude, longitude: point.longitude }}
+              title={point.title}
+              pinColor={index === 0 ? 'green' : index === selectedTrip.route.length - 1 ? 'red' : 'blue'}
+            />
+          ))}
+          <Polyline
+            coordinates={selectedTrip.route}
+            strokeWidth={4}
+            strokeColor="#007bff"
+          />
+        </MapView>
+
+        <View style={styles.tripControls}>
+          <TouchableOpacity style={styles.finishButton} onPress={handleFinishTrip}>
+            <Text style={styles.buttonText}>Finalizar Recorrido</Text>
+          </TouchableOpacity>
+        </View>
+        <StatusBar style="light" />
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.welcome}>Hola, Juan 👋</Text>
-        <Text style={styles.date}>Miércoles, 18 de Marzo</Text>
-      </View>
-
-      <View style={styles.statsContainer}>
-        <View style={styles.statBox}>
-          <Text style={styles.statValue}>5</Text>
-          <Text style={styles.statLabel}>Rutas Hoy</Text>
-        </View>
-        <View style={styles.statBox}>
-          <Text style={styles.statValue}>124</Text>
-          <Text style={styles.statLabel}>Pasajeros</Text>
-        </View>
+        <Text style={styles.welcome}>Hola, Transportista 👋</Text>
+        <Text style={styles.date}>Tus viajes para hoy</Text>
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Estado de Ubicación</Text>
-        <View style={styles.currentRouteCard}>
-          <Text style={styles.routeDetails}>
-            {location ? `Ubicación: ${location.coords.latitude.toFixed(4)}, ${location.coords.longitude.toFixed(4)}` : errorMsg || 'No se ha obtenido la ubicación'}
-          </Text>
-          <TouchableOpacity style={styles.locationButton} onPress={requestLocation}>
-            <Text style={styles.startButtonText}>Actualizar Ubicación</Text>
+        <Text style={styles.sectionTitle}>Selecciona un Viaje Programado</Text>
+        {MOCK_TRIPS.map((trip) => (
+          <TouchableOpacity 
+            key={trip.id} 
+            style={[
+              styles.tripCard, 
+              selectedTrip?.id === trip.id && styles.tripCardSelected
+            ]}
+            onPress={() => setSelectedTrip(trip)}
+          >
+            <View>
+              <Text style={styles.tripName}>{trip.name}</Text>
+              <Text style={styles.tripDetails}>{trip.time} | {trip.passengers} Pasajeros</Text>
+            </View>
+            {selectedTrip?.id === trip.id && (
+              <View style={styles.selectedBadge}>
+                <Text style={styles.selectedBadgeText}>Seleccionado</Text>
+              </View>
+            )}
           </TouchableOpacity>
-        </View>
+        ))}
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Ruta Actual</Text>
-        <View style={styles.currentRouteCard}>
-          <Text style={styles.routeName}>Ruta Escolar - Mañana</Text>
-          <Text style={styles.routeDetails}>12 Paradas | 07:30 AM</Text>
-          <TouchableOpacity style={styles.startButton}>
-            <Text style={styles.startButtonText}>Iniciar Recorrido</Text>
+      {selectedTrip && (
+        <View style={styles.actionContainer}>
+          <TouchableOpacity style={styles.startButton} onPress={handleStartTrip}>
+            <Text style={styles.buttonText}>Iniciar {selectedTrip.name}</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      )}
 
       <View style={styles.section}>
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
@@ -99,88 +180,118 @@ const styles = StyleSheet.create({
     color: '#6c757d',
     marginTop: 4,
   },
-  statsContainer: {
-    flexDirection: 'row',
+  section: {
     padding: 20,
-    justifyContent: 'space-between',
   },
-  statBox: {
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 15,
+  },
+  tripCard: {
     backgroundColor: '#fff',
     padding: 20,
     borderRadius: 16,
-    width: '48%',
+    marginBottom: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 10,
     elevation: 2,
   },
-  statValue: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#007bff',
+  tripCardSelected: {
+    borderColor: '#007bff',
+    backgroundColor: '#eef7ff',
   },
-  statLabel: {
+  tripName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#1a1a1a',
+  },
+  tripDetails: {
     fontSize: 14,
     color: '#6c757d',
     marginTop: 4,
   },
-  section: {
+  selectedBadge: {
+    backgroundColor: '#007bff',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  selectedBadgeText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  actionContainer: {
     padding: 20,
   },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1a1a1a',
-    marginBottom: 16,
-  },
-  currentRouteCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 24,
-    shadowColor: '#000',
+  startButton: {
+    backgroundColor: '#28a745',
+    padding: 18,
+    borderRadius: 12,
+    alignItems: 'center',
+    shadowColor: '#28a745',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
     elevation: 4,
   },
-  routeName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1a1a1a',
-  },
-  routeDetails: {
-    fontSize: 14,
-    color: '#6c757d',
-    marginTop: 4,
-    marginBottom: 20,
-  },
-  startButton: {
-    backgroundColor: '#007bff',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-  },
-  locationButton: {
-    backgroundColor: '#28a745',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-  },
-  startButtonText: {
+  buttonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
   },
-  logoutButton: {
-    padding: 16,
+  activeTripHeader: {
+    padding: 40,
+    paddingTop: 60,
+    backgroundColor: '#1a1a1a',
+  },
+  activeTripTitle: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  activeTripSub: {
+    color: '#aaa',
+    fontSize: 14,
+    marginTop: 4,
+  },
+  map: {
+    flex: 1,
+    width: Dimensions.get('window').width,
+    height: Dimensions.get('window').height,
+  },
+  tripControls: {
+    position: 'absolute',
+    bottom: 30,
+    left: 20,
+    right: 20,
+  },
+  finishButton: {
+    backgroundColor: '#dc3545',
+    padding: 18,
+    borderRadius: 12,
     alignItems: 'center',
-    marginTop: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  logoutButton: {
+    padding: 15,
+    alignItems: 'center',
   },
   logoutButtonText: {
     color: '#dc3545',
-    fontSize: 16,
     fontWeight: '600',
   },
 });
