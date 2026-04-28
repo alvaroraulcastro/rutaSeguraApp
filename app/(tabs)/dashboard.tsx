@@ -3,9 +3,8 @@ import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Dimensions
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as Location from 'expo-location';
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
+import TripMap from '../../components/TripMap';
 
-// Mock de viajes programados
 const MOCK_TRIPS = [
   {
     id: '1',
@@ -75,30 +74,7 @@ export default function DashboardScreen() {
           <Text style={styles.activeTripSub}>{selectedTrip.time} - {selectedTrip.passengers} Pasajeros</Text>
         </View>
         
-        <MapView
-          style={styles.map}
-          initialRegion={{
-            latitude: selectedTrip.route[0].latitude,
-            longitude: selectedTrip.route[0].longitude,
-            latitudeDelta: 0.02,
-            longitudeDelta: 0.02,
-          }}
-          showsUserLocation
-        >
-          {selectedTrip.route.map((point, index) => (
-            <Marker
-              key={index}
-              coordinate={{ latitude: point.latitude, longitude: point.longitude }}
-              title={point.title}
-              pinColor={index === 0 ? 'green' : index === selectedTrip.route.length - 1 ? 'red' : 'blue'}
-            />
-          ))}
-          <Polyline
-            coordinates={selectedTrip.route}
-            strokeWidth={4}
-            strokeColor="#007bff"
-          />
-        </MapView>
+        <TripMap route={selectedTrip.route} style={styles.map} />
 
         <View style={styles.tripControls}>
           <TouchableOpacity style={styles.finishButton} onPress={handleFinishTrip}>
