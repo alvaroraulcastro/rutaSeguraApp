@@ -1,9 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Dimensions } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, Dimensions, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as Location from 'expo-location';
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
+
+// Importación condicional de react-native-maps (solo funciona en Android/iOS)
+let MapView: any = null;
+let Marker: any = null;
+let Polyline: any = null;
+
+if (Platform.OS !== 'web') {
+  try {
+    const maps = require('react-native-maps');
+    MapView = maps.default;
+    Marker = maps.Marker;
+    Polyline = maps.Polyline;
+  } catch (error) {
+    console.warn('react-native-maps no está disponible en este entorno');
+  }
+}
 
 // Mock de viajes programados
 const MOCK_TRIPS = [
@@ -75,30 +90,37 @@ export default function DashboardScreen() {
           <Text style={styles.activeTripSub}>{selectedTrip.time} - {selectedTrip.passengers} Pasajeros</Text>
         </View>
         
-        <MapView
-          style={styles.map}
-          initialRegion={{
-            latitude: selectedTrip.route[0].latitude,
-            longitude: selectedTrip.route[0].longitude,
-            latitudeDelta: 0.02,
-            longitudeDelta: 0.02,
-          }}
-          showsUserLocation
-        >
-          {selectedTrip.route.map((point, index) => (
-            <Marker
-              key={index}
-              coordinate={{ latitude: point.latitude, longitude: point.longitude }}
-              title={point.title}
-              pinColor={index === 0 ? 'green' : index === selectedTrip.route.length - 1 ? 'red' : 'blue'}
+        {MapView ? (
+          <MapView
+            style={styles.map}
+            initialRegion={{
+              latitude: selectedTrip.route[0].latitude,
+              longitude: selectedTrip.route[0].longitude,
+              latitudeDelta: 0.02,
+              longitudeDelta: 0.02,
+            }}
+            showsUserLocation
+          >
+            {selectedTrip.route.map((point, index) => (
+              <Marker
+                key={index}
+                coordinate={{ latitude: point.latitude, longitude: point.longitude }}
+                title={point.title}
+                pinColor={index === 0 ? 'green' : index === selectedTrip.route.length - 1 ? 'red' : 'blue'}
+              />
+            ))}
+            <Polyline
+              coordinates={selectedTrip.route}
+              strokeWidth={4}
+              strokeColor="#007bff"
             />
-          ))}
-          <Polyline
-            coordinates={selectedTrip.route}
-            strokeWidth={4}
-            strokeColor="#007bff"
-          />
-        </MapView>
+          </MapView>
+        ) : (
+          <View style={styles.mapPlaceholder}>
+            <Text style={styles.placeholderText}>Mapa no disponible en web</Text>
+            <Text style={styles.placeholderSubtext}>Usa la aplicación en Android o iOS para ver el mapa</Text>
+          </View>
+        )}
 
         <View style={styles.tripControls}>
           <TouchableOpacity style={styles.finishButton} onPress={handleFinishTrip}>
@@ -268,6 +290,27 @@ const styles = StyleSheet.create({
     flex: 1,
     width: Dimensions.get('window').width,
     height: Dimensions.get('window').height,
+  },
+  mapPlaceholder: {
+    flex: 1,
+    width: Dimensions.get('window').width,
+    height: Dimensions.get('window').height,
+    backgroundColor: '#e9ecef',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  placeholderText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#495057',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  placeholderSubtext: {
+    fontSize: 14,
+    color: '#6c757d',
+    textAlign: 'center',
   },
   tripControls: {
     position: 'absolute',
