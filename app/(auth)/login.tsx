@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
   StyleSheet,
   View,
   Text,
@@ -12,16 +14,74 @@ import {
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 
+const LOGIN_URL = 'https://ruta-segura-administrador.vercel.app/api/v1/auth/login';
+
 export default function LoginScreen() {
   const router = useRouter();
-  const [identifier, setIdentifier] = useState(''); // Email o Usuario
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const handleLogin = () => {
-    // Aquí iría la lógica de autenticación real
-    console.log('Login attempt:', identifier, password);
-    // Por ahora simulamos un login exitoso
-    router.replace('/(tabs)/dashboard');
+  const handleLogin = async () => {
+    if (isSubmitting) return;
+
+    const email = identifier.trim();
+    const apiKey = process.env.EXPO_PUBLIC_RUTA_SEGURA_API_KEY;
+    const isWeb = Platform.OS === 'web';
+    const loginUrl = isWeb ? '/api/v1/auth/login' : LOGIN_URL;
+
+    setErrorMessage(null);
+
+    if (!email || !password) {
+      Alert.alert('Atención', 'Completa el email y la contraseña.');
+      return;
+    }
+
+    if (!apiKey) {
+      Alert.alert(
+        'Falta configuración',
+        'Define la variable EXPO_PUBLIC_RUTA_SEGURA_API_KEY para poder autenticar.'
+      );
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+
+      const response = await fetch(loginUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(isWeb ? {} : { apiKey }),
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const raw = await response.text();
+      let data: any = null;
+      try {
+        data = raw ? JSON.parse(raw) : null;
+      } catch {}
+
+      if (!response.ok) {
+        const message =
+          data?.message ??
+          data?.error ??
+          `No fue posible iniciar sesión (HTTP ${response.status}).`;
+        setErrorMessage(message);
+        Alert.alert('Error de inicio de sesión', message);
+        return;
+      }
+
+      router.replace('/(tabs)/dashboard');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Error de red al iniciar sesión.';
+      setErrorMessage(message);
+      Alert.alert('Error', message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -63,8 +123,18 @@ export default function LoginScreen() {
             <Text style={styles.forgotPasswordText}>¿Olvidaste tu contraseña?</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-            <Text style={styles.loginButtonText}>Iniciar Sesión</Text>
+          {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+
+          <TouchableOpacity
+            style={[styles.loginButton, isSubmitting && styles.loginButtonDisabled]}
+            onPress={handleLogin}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.loginButtonText}>Iniciar Sesión</Text>
+            )}
           </TouchableOpacity>
 
           <View style={styles.registerContainer}>
@@ -134,6 +204,11 @@ const styles = StyleSheet.create({
     color: '#007bff',
     fontWeight: '600',
   },
+  errorText: {
+    marginTop: 16,
+    color: '#dc3545',
+    fontWeight: '600',
+  },
   loginButton: {
     backgroundColor: '#007bff',
     borderRadius: 12,
@@ -145,6 +220,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 4,
+  },
+  loginButtonDisabled: {
+    opacity: 0.7,
   },
   loginButtonText: {
     color: '#fff',
