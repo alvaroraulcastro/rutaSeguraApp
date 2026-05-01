@@ -9,34 +9,47 @@ type RoutePoint = {
 };
 
 type Props = {
+  startLocation?: RoutePoint;
   route: RoutePoint[];
   style?: StyleProp<ViewStyle>;
 };
 
-export default function TripMap({ route, style }: Props) {
-  if (!route.length) return null;
+export default function TripMap({ startLocation, route, style }: Props) {
+  if (!startLocation && !route.length) return null;
+
+  const line = startLocation ? [startLocation, ...route] : route;
+  const initial = startLocation ?? route[0];
+  if (!initial) return null;
 
   return (
     <MapView
       style={style}
       initialRegion={{
-        latitude: route[0].latitude,
-        longitude: route[0].longitude,
+        latitude: initial.latitude,
+        longitude: initial.longitude,
         latitudeDelta: 0.02,
         longitudeDelta: 0.02,
       }}
       showsUserLocation
     >
+      {startLocation ? (
+        <Marker
+          coordinate={{ latitude: startLocation.latitude, longitude: startLocation.longitude }}
+          title={startLocation.title}
+          pinColor="green"
+        />
+      ) : null}
+
       {route.map((point, index) => (
         <Marker
           key={index}
           coordinate={{ latitude: point.latitude, longitude: point.longitude }}
           title={point.title}
-          pinColor={index === 0 ? 'green' : index === route.length - 1 ? 'red' : 'blue'}
+          pinColor={index === route.length - 1 ? 'red' : 'blue'}
         />
       ))}
-      <Polyline coordinates={route} strokeWidth={4} strokeColor="#007bff" />
+
+      <Polyline coordinates={line} strokeWidth={4} strokeColor="#007bff" />
     </MapView>
   );
 }
-

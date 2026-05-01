@@ -12,11 +12,16 @@ const MOCK_TRIPS = [
     time: '07:30 AM',
     passengers: 12,
     status: 'pending',
+    startLocation: {
+      latitude: -33.4469,
+      longitude: -70.673,
+      title: 'Inicio (Domicilio Transportista)',
+    },
     route: [
-      { latitude: -33.4489, longitude: -70.6693, title: 'Inicio: Colegio A' },
-      { latitude: -33.4510, longitude: -70.6650, title: 'Parada 1: Juanito' },
-      { latitude: -33.4550, longitude: -70.6600, title: 'Parada 2: Maria' },
-      { latitude: -33.4600, longitude: -70.6550, title: 'Fin: Residencial B' },
+      { latitude: -33.4489, longitude: -70.6693, title: 'Parada 1: Colegio A' },
+      { latitude: -33.451, longitude: -70.665, title: 'Parada 2: Juanito' },
+      { latitude: -33.455, longitude: -70.66, title: 'Parada 3: Maria' },
+      { latitude: -33.46, longitude: -70.655, title: 'Fin: Residencial B' },
     ]
   },
   {
@@ -25,9 +30,14 @@ const MOCK_TRIPS = [
     time: '05:30 PM',
     passengers: 8,
     status: 'pending',
+    startLocation: {
+      latitude: -33.4125,
+      longitude: -70.6015,
+      title: 'Inicio (Vehículo Estacionado)',
+    },
     route: [
-      { latitude: -33.4150, longitude: -70.6050, title: 'Empresa X' },
-      { latitude: -33.4200, longitude: -70.6150, title: 'Metro Tobalaba' },
+      { latitude: -33.415, longitude: -70.605, title: 'Parada 1: Empresa X' },
+      { latitude: -33.42, longitude: -70.615, title: 'Fin: Metro Tobalaba' },
     ]
   }
 ];
@@ -74,7 +84,7 @@ export default function DashboardScreen() {
           <Text style={styles.activeTripSub}>{selectedTrip.time} - {selectedTrip.passengers} Pasajeros</Text>
         </View>
         
-        <TripMap route={selectedTrip.route} style={styles.map} />
+        <TripMap startLocation={selectedTrip.startLocation} route={selectedTrip.route} style={styles.map} />
 
         <View style={styles.tripControls}>
           <TouchableOpacity style={styles.finishButton} onPress={handleFinishTrip}>

@@ -9,17 +9,19 @@ type RoutePoint = {
 };
 
 type Props = {
+  startLocation?: RoutePoint;
   route: RoutePoint[];
   style?: StyleProp<ViewStyle>;
 };
 
-export default function TripMap({ route, style }: Props) {
+export default function TripMap({ startLocation, route, style }: Props) {
   return (
     <View style={[styles.container, style]}>
       <Text style={styles.title}>Mapa no disponible</Text>
       <Text style={styles.subtitle}>Usa la aplicación en Android o iOS para ver el mapa</Text>
       <View style={styles.routeBox}>
         <Text style={styles.routeTitle}>Ruta</Text>
+        {startLocation ? <Text style={styles.routeItem}>Inicio: {startLocation.title}</Text> : null}
         {route.map((point, index) => (
           <Text key={index} style={styles.routeItem}>
             {index + 1}. {point.title}
